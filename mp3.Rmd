@@ -7,7 +7,56 @@ output:
     code_folding: hide
 ---
 
-```{r}
+MacLeish has approximately four miles of built trail for use by field station visitors. We would like to be able to classify these trails as “Easy,” “Moderate,” or “Difficult” based on their length and change in elevation. Use the spatial data to develop a heuristic that will classify these (or any other) trails based on their difficulty. You might want to consult existing trail rating systems. It would be cool if you could create elevation profiles (e.g., this one).
+Supporting data includes:
+Existing trails shapefile
+10’ contour elevation data
+
+
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
+library(macleish)
+library(sf)
 ```
 
+#classify trails as Easy, Moderate or Difficult
+#based on length and total change in elevation
+#time to walk
+
+
+```{r message=FALSE, warning=FALSE}
+lengths <- macleish_layers %>%
+  pluck("trails") %>%
+  st_length()
+
+trails <- macleish_layers[["trails"]] %>%
+  mutate(lengths = lengths) %>%
+  filter(color != "") 
+
+trails$color <- as.character(trails$color)
+trails[8,2] = "Green"
+trails$color <- as.factor(trails$color)
+
+
+#trails %>%
+  #group_by(color) %>%
+  #sum(lengths)
+  
+```
+
+```{r}
+contour3m <- macleish_layers[["contours_3m"]]
+contour30ft <- macleish_layers[["contours_30ft"]]
+
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+ggplot() + 
+  geom_sf(data = macleish_layers[["trails"]], color = "red") + 
+  geom_sf(data = macleish_layers[["contours_3m"]])
+
+  
+```
