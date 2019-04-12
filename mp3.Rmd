@@ -38,11 +38,28 @@ trails[8,2] = "Green"
 trails$color <- as.factor(trails$color)
 
 
-#trails %>%
-  #group_by(color) %>%
-  #sum(lengths)
+new <- trails %>%
+  group_by(color) %>%
+  summarise(sum(lengths))
+
+elev <- new %>%
+  st_intersection(pluck(macleish_layers,"contours_3m"))
+
+newest <- elev %>% 
+  group_by(color) %>%
+  summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
+  
+
+ggplot() +
+  geom_sf(data = new, color = "red") +
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  #geom_sf(data = elev, color = "yellow")
+  geom_sf(data = newest, color = "yellow")
+  
   
 ```
+
+
 
 ```{r}
 contour3m <- macleish_layers[["contours_3m"]]
