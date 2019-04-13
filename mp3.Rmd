@@ -46,8 +46,16 @@ elev <- new %>%
   st_intersection(pluck(macleish_layers,"contours_3m"))
 
 newest <- elev %>% 
-  group_by(color) %>%
-  summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
+  mutate(segment_length = st_length(color) - lag(st_length(color)))
+
+
+  
+
+#%>%
+  #group_by(color) %>%
+  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
   
 
 ggplot() +
@@ -75,5 +83,48 @@ ggplot() +
   geom_sf(data = macleish_layers[["trails"]], color = "red") + 
   geom_sf(data = macleish_layers[["contours_3m"]])
 
+  
+```
+
+
+
+#TESTER:-
+```{r}
+lengths <- macleish_layers %>%
+  pluck("trails") %>%
+  st_length()
+
+trails <- macleish_layers[["trails"]] %>%
+  mutate(lengths = lengths) %>%
+  filter(color != "") 
+
+trails$color <- as.character(trails$color)
+trails[8,2] = "Green"
+trails$color <- as.factor(trails$color)
+
+
+new <- trails %>%
+  group_by(color) %>%
+  summarise(sum(lengths))
+
+elev <- new %>%
+  st_intersection(pluck(macleish_layers,"contours_3m"))
+
+newest <- elev %>% 
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
+  mutate(segment_length = st_length(color) - lag(st_length(color)))
+  
+
+#%>%
+  #group_by(color) %>%
+  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
+  
+
+ggplot() +
+  geom_sf(data = new, color = "red") +
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  #geom_sf(data = elev, color = "yellow")
+  geom_sf(data = newest, color = "yellow")
   
 ```
