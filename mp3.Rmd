@@ -25,6 +25,198 @@ library(sf)
 
 
 ```{r message=FALSE, warning=FALSE}
+
+# compute lengths for trails
+
+lengths <- macleish_layers %>%
+  pluck("trails") %>%
+  st_length()
+
+# create dataframe with lengths and get rid of non-trails
+
+trails <- macleish_layers[["trails"]] %>%
+  mutate(lengths = lengths) %>%
+  filter(color != "")  
+
+# one trail's color was missing (as assigned by the official Macleish trail map)
+trails$color <- as.character(trails$color)
+trails[8,2] = "Green"
+trails$color <- as.factor(trails$color)
+
+
+#need overall trail length
+#need overall trail elevation
+#use this to determine overall trail difficulty
+#plot elevation per line segment on leaflet
+
+segment_intersection <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color != "Road") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+#each chunk has length per segment and elevation per segment
+Blue <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color != "Road", color == "Blue") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+Green <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color != "Road", color == "Green") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+Red <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color != "Road", color == "Red") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+White <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color != "Road", color == "White") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+
+Yellow <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color != "Road", color == "Yellow") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+  
+
+
+```  
+
+#overall_elev <- contour3m %>%
+  #group_by(color) %>%
+  #summarise(N=n(), elev = max(ELEV_M) - min(ELEV_M))
+
+#length for all trails
+new <- trails %>%
+  group_by(color) %>%
+  summarise(sum(lengths))
+
+#new %>%
+  #mutate(data = contour3m, total_elev_change = max(ELEV_M) - min(ELEV_M))
+
+elev <- new %>%
+  st_intersection(pluck(macleish_layers,"contours_3m"))
+
+newest <- elev %>% 
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
+  mutate(segment_length = st_length(color) - lag(st_length(color)))
+
+
+  
+
+#%>%
+  #group_by(color) %>%
+  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
+  
+
+ggplot() +
+  geom_sf(data = new, color = "red") +
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  #geom_sf(data = elev, color = "yellow")
+  geom_sf(data = newest, color = "yellow")
+  
+  
+
+
+
+```{r}
+contour3m <- macleish_layers[["contours_3m"]]
+contour30ft <- macleish_layers[["contours_30ft"]]
+
+
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+ggplot() + 
+  geom_sf(data = macleish_layers[["trails"]], color = "red") + 
+  geom_sf(data = macleish_layers[["contours_3m"]])
+
+  
+```
+
+
+
+#TESTER:-
+```{r}
+lengths <- macleish_layers %>%
+  pluck("trails") %>%
+  st_length()
+
+trails <- macleish_layers[["trails"]] %>%
+  mutate(lengths = lengths) %>%
+  filter(color != "") 
+
+trails$color <- as.character(trails$color)
+trails[8,2] = "Green"
+trails$color <- as.factor(trails$color)
+
+
+new <- trails %>%
+  group_by(color) %>%
+  summarise(sum(lengths))
+
+elev <- new %>%
+  st_intersection(pluck(macleish_layers,"contours_3m"))
+
+newest <- elev %>% 
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
+  mutate(segment_length = st_length(color) - lag(st_length(color)))
+  
+
+#%>%
+  #group_by(color) %>%
+  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
+  
+
+ggplot() +
+  geom_sf(data = new, color = "red") +
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  #geom_sf(data = elev, color = "yellow")
+  geom_sf(data = newest, color = "yellow")
+  
+```
+
+
+
+
+
+
+
+
+
+
+#TEST DOC
+MacLeish has approximately four miles of built trail for use by field station visitors. We would like to be able to classify these trails as “Easy,” “Moderate,” or “Difficult” based on their length and change in elevation. Use the spatial data to develop a heuristic that will classify these (or any other) trails based on their difficulty. You might want to consult existing trail rating systems. It would be cool if you could create elevation profiles (e.g., this one).
+Supporting data includes:
+Existing trails shapefile
+10’ contour elevation data
+
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(macleish)
+library(sf)
+```
+
+#classify trails as Easy, Moderate or Difficult
+#based on length and total change in elevation
+#time to walk
+
+
+```{r message=FALSE, warning=FALSE}
 lengths <- macleish_layers %>%
   pluck("trails") %>%
   st_length()
