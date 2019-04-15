@@ -1,5 +1,5 @@
 ---
-title: "mp3"
+title: "TITLE TK"
 author: "Zoya Azhar, Ruby Wu, Ruth Tekleab Mekbib"
 date: "April 8, 2019"
 output:
@@ -18,7 +18,6 @@ library(tidyverse)
 library(macleish)
 library(sf)
 library(leaflet)
-library(ggrepel)
 ```
 
 #classify trails as Easy, Moderate or Difficult
@@ -26,7 +25,7 @@ library(ggrepel)
 #time to walk
 
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, fig = 20}
 
 # compute lengths for trails
 
@@ -69,16 +68,33 @@ final <- initial2 %>%
   mutate(difficulty = sqrt(as.numeric(((elev_change) *2* (total_length))))) %>%
   arrange(difficulty)
 
+# plot 
+
+ggplot() + 
+  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  geom_sf(data = final, aes(color = color)) + #NEED TO DO scaleManual AND GET CORRECT COLORS
+  geom_sf_label(data = final, aes(label = elev_change))
+
+# contains elevation change at every intersection point
+
 segment_intersection <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
   arrange(color) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+# plot elevation change on each trail
+
+change_at_pts <- ggplot(segment_intersection,aes(x = ELEV_M, y = elev_change)) +
+  geom_line() +
+  facet_wrap(~color)
+change_at_pts
+
+
   
-ggplot() + 
-  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
-  geom_sf(data = macleish_layers[["contours_3m"]]) +
-  geom_sf(data = final, aes(color = color)) +
-  geom_sf_label(data = final, aes(label = elev_change))
+  
+
+  
 
 #my_plot <- leaflet() %>%
   #addTiles %>%
@@ -143,7 +159,7 @@ ggplot() +
 
 
 
-```{r}
+```{r eval=FALSE}
 # creating leaflet map
 
 trails2 <- trails %>% 
@@ -194,7 +210,7 @@ base_plot <- leaflet() %>%
 
 ```
 
-```{r}
+```{r eval=FALSE}
 # CREATE DATAFRAMES FOR EACH TRAIL WITH LENGTH AND ELEVATION CHANGE PER SEGMENT
 
 segment_intersection <- trails %>%
