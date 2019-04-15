@@ -7,25 +7,23 @@ output:
     code_folding: hide
 ---
 
-MacLeish has approximately four miles of built trail for use by field station visitors. We would like to be able to classify these trails as “Easy,” “Moderate,” or “Difficult” based on their length and change in elevation. Use the spatial data to develop a heuristic that will classify these (or any other) trails based on their difficulty. You might want to consult existing trail rating systems. It would be cool if you could create elevation profiles (e.g., this one).
-Supporting data includes:
-Existing trails shapefile
-10’ contour elevation data
-
-
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(macleish)
 library(sf)
-library(leaflet)
 ```
 
-#classify trails as Easy, Moderate or Difficult
-#based on length and total change in elevation
-#time to walk
+-title
+-problem statement
+-500-800 words
+-explain the points(visual mapping) i.e. they are intersection points
+-shenandoah (external analysis point)
+-actionable recommendation
+-resource discussion (signage, posters)
 
+-chunks, line breaks, comment proofread
 
-```{r message=FALSE, warning=FALSE, fig = 20}
+```{r message=FALSE, warning=FALSE}
 
 # compute lengths for trails
 
@@ -53,13 +51,13 @@ trails$color <- as.factor(trails$color)
 
 initial <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  group_by(color,lengths) %>%
+  group_by(name,lengths) %>%
   summarise(segments = n(), elev_change = (max(ELEV_M)-min(ELEV_M)))
 
 # contains total elevation change and total length of each trail
 
 initial2 <- initial %>%
-  group_by(color) %>%
+  group_by(name) %>%
   summarise(total_length = sum(lengths), elev_change = sum(elev_change), segments = sum(segments))
 
 # can compute difficulty level using sqrt((elevation_gain)*2*(distance)), Shenandoah rating
@@ -71,193 +69,83 @@ final <- initial2 %>%
 # plot 
 
 ggplot() + 
-  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
+  geom_sf(data = macleish_layers[["trails"]],
+          color = "black", size = 1, alpha = 0.2) + 
   geom_sf(data = macleish_layers[["contours_3m"]]) +
-  geom_sf(data = final, aes(color = color)) + #NEED TO DO scaleManual AND GET CORRECT COLORS
-  geom_sf_label(data = final, aes(label = elev_change))
-
-# contains elevation change at every intersection point
-
-segment_intersection <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M))
+  geom_sf(data = final, aes(fill = name, color = name)) +
+  geom_sf_label(data = final, aes(label = elev_change)) +
+  labs(title = "Total elevation change over each Macleish trail (meters)") +
+  labs(x = "Latitude") +
+  labs(y = "Longitude")
+  
 
 # plot elevation change on each trail
 
-change_at_pts <- ggplot(segment_intersection,aes(x = ELEV_M, y = elev_change)) +
-  geom_line() +
-  facet_wrap(~color)
-change_at_pts
-
-
-  
-  
-
-  
-
-#my_plot <- leaflet() %>%
-  #addTiles %>%
-  #addMarkers(data = final)
-
-
-#final2 <- final %>%
-  #group_by(color) %>%
-  #summarise(do_union = FALSE) %>%
-  #st_cast("LINESTRING") %>%
-  #ggplot(aes(color = color)) +
-  #geom_sf()
-
-#trails2 <- final %>% 
-  #st_cast("MULTIPOINT") %>% 
-  #st_cast("POINT")
-
-#my_plot <- leaflet() %>%
-  #addTiles() %>%
-  #addPolylines(data = final2)
-
-#my_plot
-
-#base_plot <- leaflet() %>%
-  #addTiles() %>%
-  #addPolylines(data = macleish_layers[["trails"]], popup = ~ color)
-#base_plot
-
-
-blue <- trails %>%
+# ENTRY TRAIL / GREEN
+entrytrail <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "Blue") %>%
-  arrange(color) %>%
+  filter(name == "entry trail") %>%
+  arrange(name) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
 
-ggplot() + 
-  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
-  geom_sf(data = macleish_layers[["contours_3m"]]) +
-  geom_sf(data = blue, color = "blue") +
-  geom_sf_label(data = blue, aes(label = elev_change)) 
+entry_trail_plot <- ggplot(entrytrail,aes(x = ELEV_M, y = elev_change)) +
+  geom_line()
+entry_trail_plot
 
-red <- trails %>%
+# WESTERN TRAIL / RED 
+westernloop <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "Red") %>%
-  arrange(color) %>%
+  filter(name == "Western Loop") %>%
+  arrange(name) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
 
-ggplot() + 
-  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
-  geom_sf(data = macleish_layers[["contours_3m"]]) +
-  geom_sf(data = red, color = "Red") +
-  geom_sf_label(data = red, aes(label = elev_change))
+westernloop_plot <- ggplot(westernloop,aes(x = ELEV_M, y = elev_change)) +
+  geom_line()
+westernloop_plot
+
+# EASTERN LOOP / BLUE
+easternloop <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(name == "Eastern Loop") %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+easternloop_plot <- ggplot(easternloop,aes(x = ELEV_M, y = elev_change)) +
+  geom_line()
+easternloop_plot
 
 
-# LABEL THEM ON MAP
-# HOW TO GGREPEL ELEV_CHANGE LABELS ON MAP
-# WANT A MAP WITH TRAILS HIGHLIGHTED AND RANKED, AND DIFFERENT POINTS OVER WHICH YOU CAN HOVER AND GET ELEV_CHANGE
+# PORCUPINE TRAIL / WHITE
+porcupinetrail <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(name == "Porcupine Trail") %>%
+  arrange(name) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
 
+porcupinetrail_plot <- ggplot(porcupinetrail,aes(x = ELEV_M, y = elev_change)) +
+  geom_line()
+porcupinetrail_plot
+
+# VERNAL POOL LOOP / YELLOW
+vernalpoolloop <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(name == "Vernal Pool Loop") %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+vernalpool_plot <- ggplot(vernalpoolloop,aes(x = ELEV_M, y = elev_change)) +
+  geom_line()
+vernalpool_plot
 
 
 ```
-
-
-
-```{r eval=FALSE}
-# creating leaflet map
-
-trails2 <- trails %>% 
-  st_cast("MULTIPOINT") %>% 
-  st_cast("POINT")
-
-blue <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "Blue") %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
-  st_cast("MULTIPOINT") %>% 
-  st_cast("POINT")
-
-diff_ranking <- final %>%
   
   
-  
+**Footnotes:**
 
-base_plot <- leaflet() %>%
-  addTiles() %>%
-  addPolylines(data = trails, layerId = ) %>%
-  base_plot
+GitHub repository:
 
+https://github.com/zazharr/mp3
 
-%>%
-  addPopups(data = blue)
+https://github.com/zazharr/mp3.git
 
-  
-
-
-
-
-# contains total length per trail
-#total_lengths <- trails %>% 
-  #group_by(color) %>%
-  #summarise(sum(lengths))
-
-# contains total length + elev_M
-#length_elev <- total_lengths %>%
-  #st_intersection(pluck(macleish_layers,"contours_3m"))
-
-# contains total elevation change per trail
-#elev_change <- length_elev %>%
-  #group_by(color) %>%
-  #summarise(N = n(), total_elev_change = (max(ELEV_M)-min(ELEV_M)))
-
-
-```
-
-```{r eval=FALSE}
-# CREATE DATAFRAMES FOR EACH TRAIL WITH LENGTH AND ELEVATION CHANGE PER SEGMENT
-
-segment_intersection <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M))
-  
-
-#each chunk has length per segment and elevation per segment
-blue <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "Blue") %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
-  st_cast("MULTIPOINT") %>% 
-  st_cast("POINT")
-
-blue_plot <- leaflet() %>%
-  addTiles() %>%
-  addPolylines(data = blue$geometry, 
-               weight = 1, color = "blue",
-               popup = ~ color)
-
-Green <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "Green") %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M))
-
-Red <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "Red") %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M))
-
-White <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "White") %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M))
-
-Yellow <- trails %>%
-  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color == "Yellow") %>%
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M))
-  
-
-```  
+***
 
