@@ -126,7 +126,7 @@ diff_ranking <- final %>%
 
 base_plot <- leaflet() %>%
   addTiles() %>%
-  addPolylines(data = trails) %>%
+  addPolylines(data = trails, layerId = ) %>%
   base_plot
 
 
