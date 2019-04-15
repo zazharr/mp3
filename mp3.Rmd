@@ -17,6 +17,8 @@ Existing trails shapefile
 library(tidyverse)
 library(macleish)
 library(sf)
+library(leaflet)
+library(ggrepel)
 ```
 
 #classify trails as Easy, Moderate or Difficult
@@ -36,287 +38,171 @@ lengths <- macleish_layers %>%
 
 trails <- macleish_layers[["trails"]] %>%
   mutate(lengths = lengths) %>%
-  filter(color != "")  
+  filter(color != "") %>%
+  filter(color != "Road")
 
 # one trail's color was missing (as assigned by the official Macleish trail map)
+  
 trails$color <- as.character(trails$color)
-trails[8,2] = "Green"
+trails[7,2] = "Green"
 trails$color <- as.factor(trails$color)
 
 
-#need overall trail length
-#need overall trail elevation
-#use this to determine overall trail difficulty
-#plot elevation per line segment on leaflet
+# create dataframe with sum of lengths and total elevation change
+
+# contains lengths 
+
+initial <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  group_by(color,lengths) %>%
+  summarise(segments = n(), elev_change = (max(ELEV_M)-min(ELEV_M)))
+
+# contains total elevation change and total length of each trail
+
+initial2 <- initial %>%
+  group_by(color) %>%
+  summarise(total_length = sum(lengths), elev_change = sum(elev_change), segments = sum(segments))
+
+# can compute difficulty level using sqrt((elevation_gain)*2*(distance)), Shenandoah rating
+
+final <- initial2 %>%
+  mutate(difficulty = sqrt(as.numeric(((elev_change) *2* (total_length))))) %>%
+  arrange(difficulty)
+
+blue <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color == "Blue") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+ggplot() + 
+  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  geom_sf(data = blue, color = "blue") +
+  geom_sf_label(data = blue, aes(label = elev_change)) 
+
+red <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color == "Red") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+
+ggplot() + 
+  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  geom_sf(data = red, color = "Red") +
+  geom_sf_label(data = red, aes(label = elev_change))
+
+
+# LABEL THEM ON MAP
+# HOW TO GGREPEL ELEV_CHANGE LABELS ON MAP
+# WANT A MAP WITH TRAILS HIGHLIGHTED AND RANKED, AND DIFFERENT POINTS OVER WHICH YOU CAN HOVER AND GET ELEV_CHANGE
+
+
+
+```
+
+
+
+```{r}
+# creating leaflet map
+
+trails2 <- trails %>% 
+  st_cast("MULTIPOINT") %>% 
+  st_cast("POINT")
+
+blue <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  filter(color == "Blue") %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
+  st_cast("MULTIPOINT") %>% 
+  st_cast("POINT")
+
+diff_ranking <- final %>%
+  
+  
+  
+
+base_plot <- leaflet() %>%
+  addTiles() %>%
+  addPolylines(data = trails) %>%
+  base_plot
+
+
+%>%
+  addPopups(data = blue)
+
+  
+
+
+
+
+# contains total length per trail
+#total_lengths <- trails %>% 
+  #group_by(color) %>%
+  #summarise(sum(lengths))
+
+# contains total length + elev_M
+#length_elev <- total_lengths %>%
+  #st_intersection(pluck(macleish_layers,"contours_3m"))
+
+# contains total elevation change per trail
+#elev_change <- length_elev %>%
+  #group_by(color) %>%
+  #summarise(N = n(), total_elev_change = (max(ELEV_M)-min(ELEV_M)))
+
+
+```
+
+```{r}
+# CREATE DATAFRAMES FOR EACH TRAIL WITH LENGTH AND ELEVATION CHANGE PER SEGMENT
 
 segment_intersection <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color != "Road") %>%
   arrange(color) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
+  
 
 #each chunk has length per segment and elevation per segment
-Blue <- trails %>%
+blue <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color != "Road", color == "Blue") %>%
+  filter(color == "Blue") %>%
   arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M))
+  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
+  st_cast("MULTIPOINT") %>% 
+  st_cast("POINT")
+
+blue_plot <- leaflet() %>%
+  addTiles() %>%
+  addPolylines(data = blue$geometry, 
+               weight = 1, color = "blue",
+               popup = ~ color)
 
 Green <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color != "Road", color == "Green") %>%
+  filter(color == "Green") %>%
   arrange(color) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
 
 Red <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color != "Road", color == "Red") %>%
+  filter(color == "Red") %>%
   arrange(color) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
 
 White <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color != "Road", color == "White") %>%
+  filter(color == "White") %>%
   arrange(color) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
-
 
 Yellow <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
-  filter(color != "Road", color == "Yellow") %>%
+  filter(color == "Yellow") %>%
   arrange(color) %>%
   mutate(elev_change = ELEV_M-lag(ELEV_M))
   
 
-
 ```  
 
-#overall_elev <- contour3m %>%
-  #group_by(color) %>%
-  #summarise(N=n(), elev = max(ELEV_M) - min(ELEV_M))
-
-#length for all trails
-new <- trails %>%
-  group_by(color) %>%
-  summarise(sum(lengths))
-
-#new %>%
-  #mutate(data = contour3m, total_elev_change = max(ELEV_M) - min(ELEV_M))
-
-elev <- new %>%
-  st_intersection(pluck(macleish_layers,"contours_3m"))
-
-newest <- elev %>% 
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
-  mutate(segment_length = st_length(color) - lag(st_length(color)))
-
-
-  
-
-#%>%
-  #group_by(color) %>%
-  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
-  
-
-ggplot() +
-  geom_sf(data = new, color = "red") +
-  geom_sf(data = macleish_layers[["contours_3m"]]) +
-  #geom_sf(data = elev, color = "yellow")
-  geom_sf(data = newest, color = "yellow")
-  
-  
-
-
-
-```{r}
-contour3m <- macleish_layers[["contours_3m"]]
-contour30ft <- macleish_layers[["contours_30ft"]]
-
-
-```
-
-
-
-```{r message=FALSE, warning=FALSE}
-ggplot() + 
-  geom_sf(data = macleish_layers[["trails"]], color = "red") + 
-  geom_sf(data = macleish_layers[["contours_3m"]])
-
-  
-```
-
-
-
-#TESTER:-
-```{r}
-lengths <- macleish_layers %>%
-  pluck("trails") %>%
-  st_length()
-
-trails <- macleish_layers[["trails"]] %>%
-  mutate(lengths = lengths) %>%
-  filter(color != "") 
-
-trails$color <- as.character(trails$color)
-trails[8,2] = "Green"
-trails$color <- as.factor(trails$color)
-
-
-new <- trails %>%
-  group_by(color) %>%
-  summarise(sum(lengths))
-
-elev <- new %>%
-  st_intersection(pluck(macleish_layers,"contours_3m"))
-
-newest <- elev %>% 
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
-  mutate(segment_length = st_length(color) - lag(st_length(color)))
-  
-
-#%>%
-  #group_by(color) %>%
-  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
-  
-
-ggplot() +
-  geom_sf(data = new, color = "red") +
-  geom_sf(data = macleish_layers[["contours_3m"]]) +
-  #geom_sf(data = elev, color = "yellow")
-  geom_sf(data = newest, color = "yellow")
-  
-```
-
-
-
-
-
-
-
-
-
-
-#TEST DOC
-MacLeish has approximately four miles of built trail for use by field station visitors. We would like to be able to classify these trails as “Easy,” “Moderate,” or “Difficult” based on their length and change in elevation. Use the spatial data to develop a heuristic that will classify these (or any other) trails based on their difficulty. You might want to consult existing trail rating systems. It would be cool if you could create elevation profiles (e.g., this one).
-Supporting data includes:
-Existing trails shapefile
-10’ contour elevation data
-
-
-```{r message=FALSE, warning=FALSE}
-library(tidyverse)
-library(macleish)
-library(sf)
-```
-
-#classify trails as Easy, Moderate or Difficult
-#based on length and total change in elevation
-#time to walk
-
-
-```{r message=FALSE, warning=FALSE}
-lengths <- macleish_layers %>%
-  pluck("trails") %>%
-  st_length()
-
-trails <- macleish_layers[["trails"]] %>%
-  mutate(lengths = lengths) %>%
-  filter(color != "") 
-
-trails$color <- as.character(trails$color)
-trails[8,2] = "Green"
-trails$color <- as.factor(trails$color)
-
-
-new <- trails %>%
-  group_by(color) %>%
-  summarise(sum(lengths))
-
-elev <- new %>%
-  st_intersection(pluck(macleish_layers,"contours_3m"))
-
-newest <- elev %>% 
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
-  mutate(segment_length = st_length(color) - lag(st_length(color)))
-
-
-  
-
-#%>%
-  #group_by(color) %>%
-  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
-  
-
-ggplot() +
-  geom_sf(data = new, color = "red") +
-  geom_sf(data = macleish_layers[["contours_3m"]]) +
-  #geom_sf(data = elev, color = "yellow")
-  geom_sf(data = newest, color = "yellow")
-  
-  
-```
-
-
-
-```{r}
-contour3m <- macleish_layers[["contours_3m"]]
-contour30ft <- macleish_layers[["contours_30ft"]]
-
-
-```
-
-
-
-```{r message=FALSE, warning=FALSE}
-ggplot() + 
-  geom_sf(data = macleish_layers[["trails"]], color = "red") + 
-  geom_sf(data = macleish_layers[["contours_3m"]])
-
-  
-```
-
-
-
-#TESTER:-
-```{r}
-lengths <- macleish_layers %>%
-  pluck("trails") %>%
-  st_length()
-
-trails <- macleish_layers[["trails"]] %>%
-  mutate(lengths = lengths) %>%
-  filter(color != "") 
-
-trails$color <- as.character(trails$color)
-trails[8,2] = "Green"
-trails$color <- as.factor(trails$color)
-
-
-new <- trails %>%
-  group_by(color) %>%
-  summarise(sum(lengths))
-
-elev <- new %>%
-  st_intersection(pluck(macleish_layers,"contours_3m"))
-
-newest <- elev %>% 
-  arrange(color) %>%
-  mutate(elev_change = ELEV_M-lag(ELEV_M)) %>%
-  mutate(segment_length = st_length(color) - lag(st_length(color)))
-  
-
-#%>%
-  #group_by(color) %>%
-  #summarise(N = n(), change = (max(ELEV_FT)-min(ELEV_FT)))
-  
-
-ggplot() +
-  geom_sf(data = new, color = "red") +
-  geom_sf(data = macleish_layers[["contours_3m"]]) +
-  #geom_sf(data = elev, color = "yellow")
-  geom_sf(data = newest, color = "yellow")
-  
-```
