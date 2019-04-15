@@ -69,6 +69,45 @@ final <- initial2 %>%
   mutate(difficulty = sqrt(as.numeric(((elev_change) *2* (total_length))))) %>%
   arrange(difficulty)
 
+segment_intersection <- trails %>%
+  st_intersection(pluck(macleish_layers,"contours_3m")) %>%
+  arrange(color) %>%
+  mutate(elev_change = ELEV_M-lag(ELEV_M))
+  
+ggplot() + 
+  geom_sf(data = macleish_layers[["trails"]], color = "black") + 
+  geom_sf(data = macleish_layers[["contours_3m"]]) +
+  geom_sf(data = final, aes(color = color)) +
+  geom_sf_label(data = final, aes(label = elev_change))
+
+#my_plot <- leaflet() %>%
+  #addTiles %>%
+  #addMarkers(data = final)
+
+
+#final2 <- final %>%
+  #group_by(color) %>%
+  #summarise(do_union = FALSE) %>%
+  #st_cast("LINESTRING") %>%
+  #ggplot(aes(color = color)) +
+  #geom_sf()
+
+#trails2 <- final %>% 
+  #st_cast("MULTIPOINT") %>% 
+  #st_cast("POINT")
+
+#my_plot <- leaflet() %>%
+  #addTiles() %>%
+  #addPolylines(data = final2)
+
+#my_plot
+
+#base_plot <- leaflet() %>%
+  #addTiles() %>%
+  #addPolylines(data = macleish_layers[["trails"]], popup = ~ color)
+#base_plot
+
+
 blue <- trails %>%
   st_intersection(pluck(macleish_layers,"contours_3m")) %>%
   filter(color == "Blue") %>%
